@@ -1,0 +1,57 @@
+ // define known tasks
+ let knowntasks = dynamic (["Windows Defender Cleanup",
+ "Windows Defender Scheduled Scan",
+ "Windows Defender Verification",
+ "Windows Defender Cache Maintenance",
+ @"\MicrosoftEdgeUpdateBrowserReplacementTask",
+ @"\MicrosoftEdgeUpdateTaskMachineUA",
+ @"\MicrosoftEdgeUpdateBrowserReplacementTask",
+ @"\MicrosoftEdgeUpdateTaskMachineCore",
+ @"\Microsoft\Windows\UpdateOrchestrator\MusUx_LogonUpdateResults",
+ @"\CreateExplorerShellUnelevatedTask",
+ @"\Lenovo\ImController\TimeBasedEvents",
+ @"\Dell SupportAssistAgent AutoUpdate",
+ @"\OneDrive Per-Machine Standalone Update Task",
+ @"\Microsoft\Office\Office Automatic Updates 2.0",
+ @"\Microsoft\Office\OfficeTelemetryAgentFallBack2016",
+ @"\Microsoft\Office\OfficeTelemetryAgentLogOn2016",
+ @"\Microsoft\Office\Office Feature Updates",
+ @"\Microsoft\Windows\Setup\SetupCleanupTask",
+ @"\OneDrive Standalone Update Task",
+ @"\Adobe Acrobat Update Task",
+ @"\Microsoft\Windows\UpdateOrchestrator\AC Power Install",
+ @"\Microsoft\VisualStudio\Updates\BackgroundDownload",
+ @"\Microsoft\Windows\UpdateOrchestrator\Policy Install",
+ @"\Microsoft\Windows\UpdateOrchestrator\MusUx_LogonReboot",
+ @"\Microsoft\Windows\EnterpriseMgmt",
+ @"\Microsoft\Windows\UpdateOrchestrator\Universal Orchestrator Start",
+ @"\Microsoft\Windows\UpdateOrchestrator\Schedule Retry Scan",
+ @"\Microsoft\Office\Office ClickToRun Service Monitor",
+ @"\Microsoft\Office\OfficeBackgroundTaskHandlerLogon",
+ @"\Microsoft\Office\OfficeBackgroundTaskHandlerRegistration",
+ @"\Microsoft\Office\Office Subscription Maintenance",
+ @"\Microsoft\Configuration Manager\Configuration Manager Health Evaluation",
+ @"\Microsoft\Configuration Manager\Configuration Manager Client Upgrade Task",
+ @"\Microsoft\Windows\termsrv\RemoteFX\RemoteFXvGPUDisableTask",
+ @"\Microsoft\Windows\termsrv\RemoteFX\RemoteFXWarningTask",
+ @"\Intel\Intel® Management and Security Status",
+ @"\Microsoft\Windows\GroupPolicy",
+ @"\User_Feed_Synchronization",
+ @"\Microsoft\Windows\UpdateOrchestrator\AC Power Download"]);
+  let validtasks = (DeviceEvents
+ | where ActionType contains 'ScheduledTask' 
+ | extend TaskInfo = parse_json(AdditionalFields)
+ | extend Taskname = tostring(TaskInfo.TaskName)
+ | where Taskname  has_any (knowntasks)
+ | project Timestamp, DeviceName, ActionType, AccountName, Taskname, TaskInfo
+ | summarize count() by tostring(Taskname));
+ DeviceEvents
+ | where ActionType contains "ScheduledTask"
+ | extend TaskInfo = parse_json(AdditionalFields)
+ | extend Taskname = tostring(TaskInfo.TaskName)
+ | join kind= leftanti        (validtasks
+ |  project Taskname )
+ on $left.Taskname == $right. Taskname
+//  | summarize count() by Taskname
+| project Timestamp, DeviceName, Taskname
+| summarize count() by Taskname
